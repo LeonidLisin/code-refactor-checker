@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group 'ru.etu.sitcenter'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {// https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit
+    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '7.0.0.202409031743-r'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
