@@ -80,10 +80,7 @@ public class GitDiffUtils {
             switch (edit.getType()) {
                 case INSERT -> diffResult.increaseAddedLines(addedLines);
                 case DELETE -> diffResult.increaseDeletedLines(deletedLines);
-                case REPLACE -> {
-                    diffResult.increaseAddedLines(addedLines);
-                    diffResult.increaseDeletedLines(deletedLines);
-                }
+                case REPLACE -> diffResult.increaseModifiedLines(addedLines);
             }
         }
     }
