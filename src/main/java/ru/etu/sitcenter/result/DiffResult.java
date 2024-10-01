@@ -4,12 +4,12 @@ public class DiffResult {
     private int addedLines;
     private int deletedLines;
 
-    public void setAddedLines(int addedLines) {
-        this.addedLines = addedLines;
+    public void increaseAddedLines(int newAddedLines) {
+        this.addedLines += newAddedLines;
     }
 
-    public void setDeletedLines(int deletedLines) {
-        this.deletedLines = deletedLines;
+    public void increaseDeletedLines(int newDeletedLines) {
+        this.deletedLines += newDeletedLines;
     }
 
     public int getAddedLines() {

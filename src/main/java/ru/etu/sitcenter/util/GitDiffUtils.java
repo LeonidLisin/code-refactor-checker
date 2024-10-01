@@ -67,32 +67,42 @@ public class GitDiffUtils {
         diffFormatter.setDiffComparator(RawTextComparator.DEFAULT);
         diffFormatter.setDetectRenames(true);
 
-        int addedLines = 0;
-        int deletedLines = 0;
-
         for (DiffEntry diff : diffs) {
-            EditList editList;
-            try {
-                editList = diffFormatter.toFileHeader(diff).toEditList();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            for (Edit edit : editList) {
-                switch (edit.getType()) {
-                    case INSERT -> addedLines += edit.getEndB() - edit.getBeginB();
-                    case DELETE -> deletedLines += edit.getEndA() - edit.getBeginA();
-                    case REPLACE -> {
-                        addedLines += edit.getEndB() - edit.getBeginB();
-                        deletedLines += edit.getEndA() - edit.getBeginA();
-                    }
+            EditList editList = getEdits(diffFormatter, diff);
+            updateResultByEdits(diffResult, editList);
+        }
+    }
+
+    private static void updateResultByEdits(DiffResult diffResult, EditList editList) {
+        for (Edit edit : editList) {
+            final int addedLines = getAddedLines(edit);
+            final int deletedLines = getDeletedLines(edit);
+            switch (edit.getType()) {
+                case INSERT -> diffResult.increaseAddedLines(addedLines);
+                case DELETE -> diffResult.increaseDeletedLines(deletedLines);
+                case REPLACE -> {
+                    diffResult.increaseAddedLines(addedLines);
+                    diffResult.increaseDeletedLines(deletedLines);
                 }
             }
         }
+    }
 
-        int currentAddedLines = diffResult.getAddedLines();
-        int currentDeletedLines = diffResult.getDeletedLines();
+    private static EditList getEdits(DiffFormatter diffFormatter, DiffEntry diff) {
+        EditList editList;
+        try {
+            editList = diffFormatter.toFileHeader(diff).toEditList();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return editList;
+    }
 
-        diffResult.setAddedLines(currentAddedLines + addedLines);
-        diffResult.setDeletedLines(currentDeletedLines + deletedLines);
+    private static int getDeletedLines(Edit edit) {
+        return edit.getEndA() - edit.getBeginA();
+    }
+
+    private static int getAddedLines(Edit edit) {
+        return edit.getEndB() - edit.getBeginB();
     }
 }
