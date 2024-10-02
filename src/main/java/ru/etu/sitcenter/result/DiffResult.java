@@ -17,6 +17,10 @@ public class DiffResult {
         this.modifiedLines += newModifiedLines;
     }
 
+    public int getRefactoredLinesCount() {
+        return this.addedLines + this.deletedLines + this.modifiedLines;
+    }
+
     public int getAddedLines() {
         return addedLines;
     }
