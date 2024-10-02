@@ -3,27 +3,31 @@ package ru.etu.sitcenter.checker;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.*;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
 import ru.etu.sitcenter.counter.RepositoryLineCounter;
 import ru.etu.sitcenter.result.DiffResult;
 import ru.etu.sitcenter.result.RefactorResult;
 import ru.etu.sitcenter.util.GitUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 
 public class DiffChecker {
     private final String beginCommitHash;
     private final Repository repository;
+    private final RevCommit latestCommit;
     private final RepositoryLineCounter counter = new RepositoryLineCounter();
 
     public DiffChecker(Repository repository, String beginCommitHash) {
         this.repository = repository;
         this.beginCommitHash = beginCommitHash;
+        this.latestCommit = GitUtils.getLatestCommit(repository);
     }
 
     public RefactorResult compareCommits() {
@@ -66,28 +70,47 @@ public class DiffChecker {
         }
     }
 
-    public static void countChanges(Repository repository,
-                                    List<DiffEntry> diffs,
-                                    DiffResult diffResult) {
+    public void countChanges(Repository repository,
+                             List<DiffEntry> diffs,
+                             DiffResult diffResult) {
         DiffFormatter diffFormatter = new DiffFormatter(new ByteArrayOutputStream());
         diffFormatter.setRepository(repository);
-        diffFormatter.setDiffComparator(RawTextComparator.DEFAULT);
+        diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
         diffFormatter.setDetectRenames(true);
 
         for (DiffEntry diff : diffs) {
             EditList editList = getEdits(diffFormatter, diff);
-            updateResultByEdits(diffResult, editList);
+            updateResultByEdits(diffResult, editList, diff.getNewPath());
         }
     }
 
-    private static void updateResultByEdits(DiffResult diffResult, EditList editList) {
+    private void updateResultByEdits(DiffResult diffResult, EditList editList, String path) {
         for (Edit edit : editList) {
-            final int addedLines = getAddedLines(edit);
-            final int deletedLines = getDeletedLines(edit);
             switch (edit.getType()) {
-                case INSERT -> diffResult.increaseAddedLines(addedLines);
-                case DELETE -> diffResult.increaseDeletedLines(deletedLines);
-                case REPLACE -> diffResult.increaseModifiedLines(addedLines);
+                case INSERT -> {
+                    int beginB = edit.getBeginB();
+                    int endB = edit.getEndB();
+                    updateChangedLines(beginB, endB, diffResult::increaseAddedLines, path);
+                }
+                case DELETE -> {
+                    int beginA = edit.getBeginA();
+                    int endA = edit.getEndA();
+                    updateChangedLines(beginA, endA, diffResult::increaseDeletedLines, path);
+                }
+                case REPLACE -> {
+                    int beginA = edit.getBeginA();
+                    int endA = edit.getEndA();
+                    updateChangedLines(beginA, endA, diffResult::increaseModifiedLines, path);
+                }
+            }
+        }
+    }
+
+    private void updateChangedLines(int beginA, int endA, Runnable runnable, String path) {
+        for (int i = beginA; i < endA; i++) {
+            String lineFromCommit = getLineFromCommit(i, path);
+            if (!lineFromCommit.contains("import") && !lineFromCommit.contains("package")) {
+                runnable.run();
             }
         }
     }
@@ -102,11 +125,29 @@ public class DiffChecker {
         return editList;
     }
 
-    private static int getDeletedLines(Edit edit) {
-        return edit.getEndA() - edit.getBeginA();
-    }
-
-    private static int getAddedLines(Edit edit) {
-        return edit.getEndB() - edit.getBeginB();
+    private String getLineFromCommit(int lineIndex, String path) {
+        ObjectReader reader = repository.newObjectReader();
+        try (TreeWalk treeWalk = new TreeWalk(repository)) {
+            treeWalk.addTree(latestCommit.getTree());
+            treeWalk.setRecursive(true);
+            treeWalk.setFilter(PathFilter.create(path));
+            if (treeWalk.next()) {
+                ObjectId objectId = treeWalk.getObjectId(0);
+                byte[] content = reader.open(objectId).getBytes();
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(content)))) {
+                    String line;
+                    int currentLine = 0;
+                    while ((line = br.readLine()) != null) {
+                        if (currentLine == lineIndex) {
+                            return line;
+                        }
+                        currentLine++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        throw new RuntimeException();
     }
 }

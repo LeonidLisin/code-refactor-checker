@@ -37,7 +37,13 @@ public class RepositoryLineCounter {
 
 
     private static boolean isCodeFile(String path) {
-        return path.endsWith(".java") || path.endsWith(".py") || path.endsWith(".js") || path.endsWith(".html");
+        return path.endsWith(".java") ||
+                path.endsWith(".sql") ||
+                path.endsWith(".css") ||
+                path.endsWith(".json") ||
+                path.endsWith(".py") ||
+                path.endsWith(".js") ||
+                path.endsWith(".html");
     }
 
     private static int countLinesInFile(File file) {

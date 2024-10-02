@@ -5,31 +5,19 @@ public class DiffResult {
     private int deletedLines;
     private int modifiedLines;
 
-    public void increaseAddedLines(int newAddedLines) {
-        this.addedLines += newAddedLines;
+    public void increaseAddedLines() {
+        this.addedLines += 1;
     }
 
-    public void increaseDeletedLines(int newDeletedLines) {
-        this.deletedLines += newDeletedLines;
+    public void increaseDeletedLines() {
+        this.deletedLines += 1;
     }
 
-    public void increaseModifiedLines(int newModifiedLines) {
-        this.modifiedLines += newModifiedLines;
+    public void increaseModifiedLines() {
+        this.modifiedLines += 1;
     }
 
     public int getRefactoredLinesCount() {
         return this.addedLines + this.deletedLines + this.modifiedLines;
-    }
-
-    public int getAddedLines() {
-        return addedLines;
-    }
-
-    public int getDeletedLines() {
-        return deletedLines;
-    }
-
-    public int getModifiedLines() {
-        return modifiedLines;
     }
 }
