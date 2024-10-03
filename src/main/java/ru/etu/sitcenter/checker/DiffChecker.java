@@ -19,29 +19,26 @@ import java.io.*;
 import java.util.List;
 
 public class DiffChecker {
-    private final String beginCommitHash;
     private final Repository repository;
     private final RevCommit latestCommit;
+    private final RevCommit beginCommit;
     private final RepositoryLineCounter counter = new RepositoryLineCounter();
 
     public DiffChecker(Repository repository, String beginCommitHash) {
         this.repository = repository;
-        this.beginCommitHash = beginCommitHash;
         this.latestCommit = GitUtils.getLatestCommit(repository);
+        this.beginCommit = GitUtils.getCommitByHash(repository, beginCommitHash);
     }
 
     public RefactorResult compareCommits() {
-        int linesBefore = counter.countLines(repository, beginCommitHash);
+//        int linesBefore = counter.countLines(repository, beginCommitHash);
         DiffResult diffResult = new DiffResult();
         updateDiffResult(diffResult);
 
-        return new RefactorResult(diffResult, linesBefore);
+        return new RefactorResult(diffResult, 0);
     }
 
     private void updateDiffResult(DiffResult diffResult) {
-        RevCommit beginCommit = GitUtils.getCommitByHash(repository, beginCommitHash);
-        RevCommit latestCommit = GitUtils.getLatestCommit(repository);
-
         List<DiffEntry> diffs =
                 getDiffsBetweenCommits(repository, beginCommit, latestCommit);
         countChanges(repository, diffs, diffResult);
@@ -86,30 +83,21 @@ public class DiffChecker {
 
     private void updateResultByEdits(DiffResult diffResult, EditList editList, String path) {
         for (Edit edit : editList) {
+            int beginA = edit.getBeginA(), endA = edit.getEndA();
+            int beginB = edit.getBeginB(), endB = edit.getEndB();
             switch (edit.getType()) {
-                case INSERT -> {
-                    int beginB = edit.getBeginB();
-                    int endB = edit.getEndB();
-                    updateChangedLines(beginB, endB, diffResult::increaseAddedLines, path);
-                }
-                case DELETE -> {
-                    int beginA = edit.getBeginA();
-                    int endA = edit.getEndA();
-                    updateChangedLines(beginA, endA, diffResult::increaseDeletedLines, path);
-                }
-                case REPLACE -> {
-                    int beginA = edit.getBeginA();
-                    int endA = edit.getEndA();
-                    updateChangedLines(beginA, endA, diffResult::increaseModifiedLines, path);
-                }
+                case INSERT -> updateChangedLines(beginB, endB, diffResult::increaseAddedLines, path);
+                case DELETE -> diffResult.increaseDeletedLines(endA - beginA);
+                case REPLACE -> updateChangedLines(beginA, endA, diffResult::increaseModifiedLines, path);
             }
         }
     }
 
-    private void updateChangedLines(int beginA, int endA, Runnable runnable, String path) {
-        for (int i = beginA; i < endA; i++) {
+    private void updateChangedLines(int begin, int end, Runnable runnable, String path) {
+        for (int i = begin; i < end; i++) {
             String lineFromCommit = getLineFromCommit(i, path);
-            if (!lineFromCommit.contains("import") && !lineFromCommit.contains("package")) {
+            if (!lineFromCommit.startsWith("import") &&
+                    !lineFromCommit.startsWith("package")) {
                 runnable.run();
             }
         }
@@ -148,6 +136,6 @@ public class DiffChecker {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        throw new RuntimeException();
+        return "";
     }
 }

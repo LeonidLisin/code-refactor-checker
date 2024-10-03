@@ -15,9 +15,9 @@ public class RepositoryLineCounter {
         int totalLines = 0;
 
         try {
-            RevCommit latestCommit = GitUtils.getCommitByHash(repository, commitHash);
+            RevCommit beginCommit = GitUtils.getCommitByHash(repository, commitHash);
             TreeWalk treeWalk = new TreeWalk(repository);
-            treeWalk.addTree(latestCommit.getTree());
+            treeWalk.addTree(beginCommit.getTree());
             treeWalk.setRecursive(true);
 
             while (treeWalk.next()) {

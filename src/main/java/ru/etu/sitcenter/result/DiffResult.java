@@ -9,8 +9,8 @@ public class DiffResult {
         this.addedLines += 1;
     }
 
-    public void increaseDeletedLines() {
-        this.deletedLines += 1;
+    public void increaseDeletedLines(int deletedLines) {
+        this.deletedLines += deletedLines;
     }
 
     public void increaseModifiedLines() {
